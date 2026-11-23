@@ -1,0 +1,13 @@
+spring:
+  application:
+    name: betting
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:betting}
+    username: ${DB_USER:betting}
+    password: ${DB_PASSWORD:betting}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    open-in-view: false
+  flyway:
+    enabled: true
