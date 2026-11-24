@@ -19,10 +19,10 @@ public class BetService {
         this.bets = bets;
     }
 
-    // Deliberately NOT @Transactional: a failed insert aborts a Postgres transaction,
-    // so the retry lookup below must run in a fresh one. Each repository call already runs in its own transaction.
+    // Deliberately NOT @Transactional.
     public PlacementResult place(PlaceBetRequest request, String idempotencyKey) {
         Optional<Bet> existing = bets.findByIdempotencyKey(idempotencyKey);
+
         if (existing.isPresent()) {
             return replay(existing.get(), request);
         }
@@ -43,12 +43,13 @@ public class BetService {
         try {
             return new PlacementResult(bets.saveAndFlush(bet), true);
         } catch (DataIntegrityViolationException e) {
-            // Another request with the same key won the race (unique constraint),
-            // or the violation came from something else, in which case we rethrow.
-            Bet winner = bets.findByIdempotencyKey(idempotencyKey).orElseThrow(() -> e);
+            Bet winner = bets.findByIdempotencyKey(idempotencyKey)
+                    .orElseThrow(() -> e);
+
             return replay(winner, request);
         }
     }
+
 
     @Transactional(readOnly = true)
     public Bet get(UUID id) {
@@ -74,17 +75,11 @@ public class BetService {
     }
 
     private PlacementResult replay(Bet existing, PlaceBetRequest request) {
-        if (sameRequest(existing, request)) {
-            return new PlacementResult(existing, false);
+        if (!existing.matches(request)) {
+            throw new BetConflictException(existing.getId());
         }
-        throw new BetConflictException(existing.getId());
-    }
 
-    private boolean sameRequest(Bet existing, PlaceBetRequest request) {
-        return existing.getUserId().equals(request.userId())
-                && existing.getSelectionId().equals(request.selectionId())
-                && existing.getStake().compareTo(request.stake()) == 0
-                && existing.getOdds().compareTo(request.odds()) == 0;
+        return new PlacementResult(existing, false);
     }
 
 }

@@ -1,5 +1,6 @@
 package com.haris.betting.bet;
 
+import com.haris.betting.bet.dto.PlaceBetRequest;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -100,6 +101,13 @@ public class Bet {
         }
         status = target;
         updatedAt = Instant.now();
+    }
+
+    public boolean matches(PlaceBetRequest request) {
+        return userId.equals(request.userId())
+                && selectionId.equals(request.selectionId())
+                && stake.compareTo(request.stake()) == 0
+                && odds.compareTo(request.odds()) == 0;
     }
     // Status changes will go through methods like cancel(), written later,
     // so the transition rules live in one place. No public setters on purpose.
