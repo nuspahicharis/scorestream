@@ -1,0 +1,48 @@
+package com.haris.betting.bet;
+
+import com.haris.betting.bet.dto.BetResponse;
+import com.haris.betting.bet.dto.PlaceBetRequest;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder;
+
+import java.net.URI;
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/bets")
+public class BetController {
+
+    private final BetService service;
+
+    public BetController(BetService service) {
+        this.service = service;
+    }
+
+    @PostMapping
+    public ResponseEntity<BetResponse> place(
+            @Valid @RequestBody PlaceBetRequest request,
+            @RequestHeader("Idempotency-Key") String idempotencyKey) {
+
+        Bet bet = service.place(request, idempotencyKey);
+
+        URI location = ServletUriComponentsBuilder.fromCurrentRequest()
+                .path("/{id}")
+                .buildAndExpand(bet.getId())
+                .toUri();
+
+        return ResponseEntity.created(location).body(BetResponse.from(bet));
+    }
+
+    @GetMapping("/{id}")
+    public BetResponse get(@PathVariable UUID id) {
+        return BetResponse.from(service.get(id));
+    }
+}
