@@ -64,6 +64,15 @@ public class BetService {
         return bet;
     }
 
+    @Transactional
+    public Bet settle(UUID id, BetStatus result) {
+        Bet bet = bets.findById(id).orElseThrow(() -> new BetNotFoundException(id));
+
+        bet.settle(result);
+
+        return bet;
+    }
+
     private PlacementResult replay(Bet existing, PlaceBetRequest request) {
         if (sameRequest(existing, request)) {
             return new PlacementResult(existing, false);

@@ -2,6 +2,7 @@ package com.haris.betting.bet;
 
 import com.haris.betting.bet.dto.BetResponse;
 import com.haris.betting.bet.dto.PlaceBetRequest;
+import com.haris.betting.bet.dto.SettleBetRequest;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -55,5 +56,10 @@ public class BetController {
     @PostMapping("/{id}/cancel")
     public BetResponse cancel(@PathVariable UUID id) {
         return BetResponse.from(service.cancel(id));
+    }
+
+    @PostMapping("/{id}/settle")
+    public BetResponse settle(@PathVariable UUID id, @Valid @RequestBody SettleBetRequest request) {
+        return BetResponse.from(service.settle(id, request.result()));
     }
 }
