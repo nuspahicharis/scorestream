@@ -31,14 +31,20 @@ public class BetController {
             @Valid @RequestBody PlaceBetRequest request,
             @RequestHeader("Idempotency-Key") String idempotencyKey) {
 
-        Bet bet = service.place(request, idempotencyKey);
+        PlacementResult result = service.place(request, idempotencyKey);
+        Bet bet = result.bet();
+        BetResponse body = BetResponse.from(bet);
+
+        if (!result.created()) {
+            return ResponseEntity.ok(body);          // replay: 200, nothing new created
+        }
 
         URI location = ServletUriComponentsBuilder.fromCurrentRequest()
                 .path("/{id}")
                 .buildAndExpand(bet.getId())
                 .toUri();
 
-        return ResponseEntity.created(location).body(BetResponse.from(bet));
+        return ResponseEntity.created(location).body(body);   // 201
     }
 
     @GetMapping("/{id}")
