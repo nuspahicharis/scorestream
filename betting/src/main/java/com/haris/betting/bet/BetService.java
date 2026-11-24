@@ -55,6 +55,15 @@ public class BetService {
         return bets.findById(id).orElseThrow(() -> new BetNotFoundException(id));
     }
 
+    @Transactional
+    public Bet cancel(UUID id) {
+        Bet bet = bets.findById(id).orElseThrow(()-> new BetNotFoundException((id)));
+
+        bet.cancel();
+
+        return bet;
+    }
+
     private PlacementResult replay(Bet existing, PlaceBetRequest request) {
         if (sameRequest(existing, request)) {
             return new PlacementResult(existing, false);
@@ -68,4 +77,5 @@ public class BetService {
                 && existing.getStake().compareTo(request.stake()) == 0
                 && existing.getOdds().compareTo(request.odds()) == 0;
     }
+
 }

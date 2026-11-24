@@ -80,6 +80,27 @@ public class Bet {
     public Instant getCreatedAt() { return createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }
 
+    public void cancel() {
+        if (status == BetStatus.CANCELLED) {
+            return;   // already cancelled: idempotent, no change, no version bump
+        }
+        transitionTo(BetStatus.CANCELLED);
+    }
+
+    public void settle(BetStatus result) {
+        if (result != BetStatus.WON && result != BetStatus.LOST) {
+            throw new IllegalArgumentException("A bet can only be settled as WON or LOST: " + result);
+        }
+        transitionTo(result);
+    }
+
+    private void transitionTo(BetStatus target) {
+        if (status != BetStatus.PLACED) {
+            throw new InvalidBetStatusTransitionException(id, status, target);
+        }
+        status = target;
+        updatedAt = Instant.now();
+    }
     // Status changes will go through methods like cancel(), written later,
     // so the transition rules live in one place. No public setters on purpose.
 }

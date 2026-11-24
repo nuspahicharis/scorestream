@@ -51,4 +51,9 @@ public class BetController {
     public BetResponse get(@PathVariable UUID id) {
         return BetResponse.from(service.get(id));
     }
+
+    @PostMapping("/{id}/cancel")
+    public BetResponse cancel(@PathVariable UUID id) {
+        return BetResponse.from(service.cancel(id));
+    }
 }
