@@ -19,7 +19,7 @@ spring:
       value-serializer: org.apache.kafka.common.serialization.StringSerializer
       properties:
         enable.idempotence: true
-        delivery.timeout.ms: 30000
+        delivery.timeout.ms: 60000
 
   betting:
     kafka:
