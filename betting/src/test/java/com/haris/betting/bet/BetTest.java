@@ -1,5 +1,6 @@
 package com.haris.betting.bet;
 
+import com.haris.betting.bet.dto.PlaceBetRequest;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -12,6 +13,10 @@ class BetTest {
     private Bet newBet() {
         return new Bet("u1", "match-1", new BigDecimal("10.00"), new BigDecimal("2.00"),
                 new BigDecimal("20.00"), "key-1");
+    }
+
+    private PlaceBetRequest request(String userId, String selectionId, String stake, String odds) {
+        return new PlaceBetRequest(userId, selectionId, new BigDecimal(stake), new BigDecimal(odds));
     }
 
     @Test
@@ -127,5 +132,47 @@ class BetTest {
         assertThatThrownBy(() -> bet.settle(BetStatus.WON))
                 .isInstanceOf(InvalidBetStatusTransitionException.class);
         assertThat(bet.getStatus()).isEqualTo(BetStatus.CANCELLED);
+    }
+
+    @Test
+    void matchesIdenticalRequest() {
+        Bet bet = newBet();
+
+        assertThat(bet.matches(request("u1", "match-1", "10.00", "2.00"))).isTrue();
+    }
+
+    @Test
+    void matchesIgnoresDifferenceInScale() {
+        Bet bet = newBet();
+
+        assertThat(bet.matches(request("u1", "match-1", "10.0", "2.000"))).isTrue();
+    }
+
+    @Test
+    void doesNotMatchDifferentUser() {
+        Bet bet = newBet();
+
+        assertThat(bet.matches(request("u2", "match-1", "10.00", "2.00"))).isFalse();
+    }
+
+    @Test
+    void doesNotMatchDifferentSelection() {
+        Bet bet = newBet();
+
+        assertThat(bet.matches(request("u1", "match-2", "10.00", "2.00"))).isFalse();
+    }
+
+    @Test
+    void doesNotMatchDifferentStake() {
+        Bet bet = newBet();
+
+        assertThat(bet.matches(request("u1", "match-1", "10.01", "2.00"))).isFalse();
+    }
+
+    @Test
+    void doesNotMatchDifferentOdds() {
+        Bet bet = newBet();
+
+        assertThat(bet.matches(request("u1", "match-1", "10.00", "2.01"))).isFalse();
     }
 }
