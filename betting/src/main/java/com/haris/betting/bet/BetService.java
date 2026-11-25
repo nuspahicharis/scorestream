@@ -1,6 +1,8 @@
 package com.haris.betting.bet;
 
 import com.haris.betting.bet.dto.PlaceBetRequest;
+import com.haris.betting.kafka.BetEventPublisher;
+import com.haris.betting.kafka.BetPlacedEvent;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,9 +16,11 @@ import java.util.UUID;
 public class BetService {
 
     private final BetRepository bets;
+    private final BetEventPublisher publisher;
 
-    public BetService(BetRepository bets) {
+    public BetService(BetRepository bets, BetEventPublisher publisher) {
         this.bets = bets;
+        this.publisher = publisher;
     }
 
     // Deliberately NOT @Transactional.
@@ -41,13 +45,16 @@ public class BetService {
         );
 
         try {
-            return new PlacementResult(bets.saveAndFlush(bet), true);
+            bets.saveAndFlush(bet);
         } catch (DataIntegrityViolationException e) {
             Bet winner = bets.findByIdempotencyKey(idempotencyKey)
                     .orElseThrow(() -> e);
 
             return replay(winner, request);
         }
+
+        publisher.publish(BetPlacedEvent.from(bet));
+        return new PlacementResult(bet, true);
     }
 
 
@@ -58,7 +65,7 @@ public class BetService {
 
     @Transactional
     public Bet cancel(UUID id) {
-        Bet bet = bets.findById(id).orElseThrow(()-> new BetNotFoundException((id)));
+        Bet bet = bets.findById(id).orElseThrow(()-> new BetNotFoundException(id));
 
         bet.cancel();
 
