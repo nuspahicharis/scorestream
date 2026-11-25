@@ -1,8 +1,11 @@
 package com.haris.betting.bet;
 
 import com.haris.betting.bet.dto.PlaceBetRequest;
+import com.haris.betting.kafka.BetEventPublisher;
+import com.haris.betting.kafka.BetPlacedEvent;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -18,6 +21,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,6 +31,9 @@ class BetServiceTest {
 
     @Mock
     private BetRepository bets;
+
+    @Mock
+    private BetEventPublisher publisher;
 
     @InjectMocks
     private BetService service;
@@ -142,6 +149,48 @@ class BetServiceTest {
 
         assertThatThrownBy(() -> service.place(request("10.00", "2.35"), KEY))
                 .isSameAs(violation);
+    }
+
+    // ---------- place: event publishing ----------
+
+    @Test
+    void placeWithNewKeyPublishesEvent() {
+        when(bets.findByIdempotencyKey(KEY)).thenReturn(Optional.empty());
+        when(bets.saveAndFlush(any(Bet.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        PlacementResult result = service.place(request("10.00", "2.35"), KEY);
+
+        ArgumentCaptor<BetPlacedEvent> captor = ArgumentCaptor.forClass(BetPlacedEvent.class);
+        verify(publisher, times(1)).publish(captor.capture());
+        BetPlacedEvent event = captor.getValue();
+        assertThat(event.betId()).isEqualTo(result.bet().getId());
+        assertThat(event.userId()).isEqualTo("u1");
+        assertThat(event.selectionId()).isEqualTo("match-1");
+        assertThat(event.stake()).isEqualByComparingTo("10.00");
+        assertThat(event.potentialPayout()).isEqualByComparingTo("23.50");
+        // the event id is derived from the bet id, so rebuilding the event gives the same id
+        assertThat(event.eventId()).isEqualTo(BetPlacedEvent.from(result.bet()).eventId());
+    }
+
+    @Test
+    void placeReplayDoesNotPublish() {
+        Bet existing = existingBet("10.00", "2.35");
+        when(bets.findByIdempotencyKey(KEY)).thenReturn(Optional.of(existing));
+
+        service.place(request("10.00", "2.35"), KEY);
+
+        verifyNoInteractions(publisher);
+    }
+
+    @Test
+    void placeLosingTheRaceDoesNotPublish() {
+        Bet winner = existingBet("10.00", "2.35");
+        when(bets.findByIdempotencyKey(KEY)).thenReturn(Optional.empty(), Optional.of(winner));
+        when(bets.saveAndFlush(any(Bet.class))).thenThrow(new DataIntegrityViolationException("duplicate key"));
+
+        service.place(request("10.00", "2.35"), KEY);
+
+        verifyNoInteractions(publisher);
     }
 
     // ---------- get ----------
