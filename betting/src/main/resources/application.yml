@@ -20,7 +20,13 @@ spring:
       properties:
         enable.idempotence: true
         delivery.timeout.ms: 60000
+        max.block.ms: 3000
+    consumer:
+      group-id: selection-stats
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
 
-  betting:
-    kafka:
-      bet-placed-topic: ${BET_PLACED_TOPIC:bets.placed.v1}
+betting:
+  kafka:
+    bet-placed-topic: ${BET_PLACED_TOPIC:bets.placed.v1}
